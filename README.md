@@ -1,13 +1,13 @@
 # EventFlow - Order API
 
-API de pedidos en Go construida sobre la semilla del bootcamp. Los niveles 1 y 2 incluyen API modular, PostgreSQL, validación, idempotencia, límites HTTP, timeouts y apagado ordenado.
+API de pedidos en Go construida sobre la semilla del bootcamp. El Nivel 1 incluye una API modular, PostgreSQL, validación y consulta de pedidos.
 
 ## Estado del desafío
 
 | Nivel | Estado |
 |---|---|
 | Nivel 1 - API modular | Implementado |
-| Nivel 2 - Confiabilidad | Implementado |
+| Nivel 2 - Confiabilidad | Pendiente |
 | Nivel 3 - Event-driven | Pendiente |
 | Nivel 4 - Operación | Pendiente |
 
@@ -19,7 +19,7 @@ Cliente HTTP
     -> Caso de uso
     -> Dominio Order
     -> OrderRepository
-    -> PostgreSQL (pedidos e idempotencia)
+    -> PostgreSQL (pedidos y artículos)
 
 Después de persistir:
     -> notificación simulada mediante log asíncrono
@@ -60,9 +60,7 @@ Ejecutar la API:
 go run ./cmd/api
 ```
 
-La API queda disponible en `http://localhost:3200`. GCP Pub/Sub es opcional en los niveles 1 y 2 y solo se inicializa cuando `PUBSUB_PROJECT_ID` tiene un valor.
-
-Los timeouts HTTP, el límite del body y el tiempo de apagado se configuran en `.env.dev`. Los valores predeterminados están documentados en `.env.example`.
+La API queda disponible en `http://localhost:3200`. GCP Pub/Sub es opcional y solo se inicializa cuando `PUBSUB_PROJECT_ID` tiene un valor.
 
 ## Endpoints de pedidos
 
@@ -71,7 +69,6 @@ Crear un pedido:
 ```bash
 curl -X POST http://localhost:3200/api/v1/orders \
   -H "Content-Type: application/json" \
-  -H "Idempotency-Key: checkout-123" \
   -d '{
     "customer_id": "customer-1",
     "items": [
@@ -85,8 +82,6 @@ curl -X POST http://localhost:3200/api/v1/orders \
 ```
 
 Respuesta esperada: `201 Created` con el ID, estado `en_preparacion`, artículos y total.
-
-Si se repite exactamente la misma solicitud con `Idempotency-Key: checkout-123`, la API devuelve `200 OK`, el mismo pedido y la cabecera `Idempotency-Replayed: true`. La misma clave con contenido diferente devuelve `409 Conflict`. La cabecera es opcional; sin ella, cada solicitud válida crea un pedido nuevo.
 
 Consultar un pedido:
 
@@ -127,7 +122,6 @@ go test ./internal/order/infrastructure -v
 
 - `001_create_health_check`: tabla del health check de la semilla.
 - `002_create_orders`: tablas `orders` y `order_items`.
-- `003_create_idempotency_keys`: claves, hash de solicitud y pedido asociado.
 
 Para recrear completamente la base local:
 
@@ -144,8 +138,6 @@ Este comando elimina únicamente el volumen local de Docker y todos sus datos.
 Las respuestas usan una estructura consistente y no muestran errores SQL ni credenciales. Ejemplos verificables:
 
 - JSON inválido o cantidad no positiva: `400`; el repositorio no crea el pedido.
-- Body mayor a `MAX_REQUEST_BODY_BYTES`: `413`.
-- Clave de idempotencia reutilizada con otro contenido: `409`.
 - Pedido inexistente: `404` con código `ORDER_NOT_FOUND`.
 - PostgreSQL no disponible: `500` genérico sin detalles internos.
 
@@ -153,9 +145,8 @@ Las respuestas usan una estructura consistente y no muestran errores SQL ni cred
 
 - Los precios usan `float64` para mantener el enfoque utilizado en el bootcamp y se redondean a dos decimales. PostgreSQL usa `NUMERIC(20,2)`. Para producción se evaluaría un tipo decimal o centavos enteros.
 - La creación de pedido y artículos usa una transacción para evitar persistencia parcial.
-- La idempotencia se serializa por clave dentro de PostgreSQL. Solicitudes concurrentes con la misma clave crean un solo pedido.
-- La notificación simulada usa una cola en memoria que se drena durante el apagado ordenado. Sigue siendo de mejor esfuerzo; RabbitMQ, reintentos y confirmaciones se incorporarán en el Nivel 3.
-- Pub/Sub se conserva en la semilla, pero no es necesario para ejecutar los niveles 1 y 2.
+- La notificación simulada se ejecuta de forma asíncrona mediante log y es de mejor esfuerzo. RabbitMQ, reintentos y confirmaciones se incorporarán en el Nivel 3.
+- Pub/Sub se conserva en la semilla, pero no es necesario para ejecutar el Nivel 1.
 
 ## Uso de IA
 
