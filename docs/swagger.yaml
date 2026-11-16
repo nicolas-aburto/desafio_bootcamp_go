@@ -1,0 +1,174 @@
+basePath: /api/v1
+definitions:
+  dto.CreateOrderItemRequest:
+    properties:
+      product_id:
+        type: string
+      quantity:
+        type: integer
+      unit_price:
+        type: number
+    type: object
+  dto.CreateOrderRequest:
+    properties:
+      customer_id:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/dto.CreateOrderItemRequest'
+        type: array
+    type: object
+  dto.ErrorResponse:
+    properties:
+      error:
+        example: Service unhealthy
+        type: string
+      timestamp:
+        example: "2024-01-15T10:30:00Z"
+        type: string
+    type: object
+  dto.HealthResponse:
+    properties:
+      database:
+        type: string
+      service:
+        example: microservice-seed-go
+        type: string
+      timestamp:
+        example: 2024-01-15T10.30:00Z
+        type: string
+    type: object
+  dto.OrderItemResponse:
+    properties:
+      product_id:
+        type: string
+      quantity:
+        type: integer
+      subtotal:
+        type: number
+      unit_price:
+        type: number
+    type: object
+  dto.OrderResponse:
+    properties:
+      created_at:
+        type: string
+      customer_id:
+        type: string
+      id:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/dto.OrderItemResponse'
+        type: array
+      status:
+        type: string
+      total:
+        type: number
+    type: object
+  httputil.ErrorDetail:
+    properties:
+      code:
+        type: string
+      details:
+        type: string
+      message:
+        type: string
+      type:
+        type: string
+    type: object
+  httputil.ErrorResponse:
+    properties:
+      error:
+        $ref: '#/definitions/httputil.ErrorDetail'
+      timestamp:
+        type: string
+    type: object
+host: localhost:3200
+info:
+  contact: {}
+  description: API de ejemplo basada en Clean Architecture
+  title: Microservice API
+  version: "1.0"
+paths:
+  /health:
+    get:
+      consumes:
+      - application/json
+      description: Returns the health status of the service
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.HealthResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Health Check
+      tags:
+      - Health
+  /orders:
+    post:
+      consumes:
+      - application/json
+      description: Validates and persists a new order
+      parameters:
+      - description: Order to create
+        in: body
+        name: order
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateOrderRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.OrderResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      summary: Create an order
+      tags:
+      - Orders
+  /orders/{id}:
+    get:
+      description: Returns an order by ID
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.OrderResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      summary: Get an order
+      tags:
+      - Orders
+swagger: "2.0"
